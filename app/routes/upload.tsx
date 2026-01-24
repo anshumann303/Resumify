@@ -1,126 +1,149 @@
-import {type FormEvent, useState} from 'react'
+import { useState } from "react";
+import { useNavigate } from "react-router";
 import Navbar from "~/components/Navbar";
+import Footer from "~/components/Footer";
 import FileUploader from "~/components/FileUploader";
-import {usePuterStore} from "~/lib/puter";
-import {useNavigate} from "react-router";
-import {convertPdfToImage} from "~/lib/pdf2img";
-import {generateUUID} from "~/lib/utils";
-import {prepareInstructions} from "../../constants";
+import { useResumeAnalysisStore } from "~/lib/store";
+
+export function meta() {
+  return [
+    { title: "Upload Resume - Resumify" },
+    { name: "description", content: "Upload your resume and job description for AI-powered analysis" },
+  ];
+}
 
 const Upload = () => {
-    const { auth, isLoading, fs, ai, kv } = usePuterStore();
-    const navigate = useNavigate();
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [statusText, setStatusText] = useState('');
-    const [file, setFile] = useState<File | null>(null);
+  const navigate = useNavigate();
+  const { 
+    analyzeResume, 
+    isAnalyzing, 
+    error, 
+    clearError,
+    setJobDescription,
+    jobDescription 
+  } = useResumeAnalysisStore();
+  
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-    const handleFileSelect = (file: File | null) => {
-        setFile(file)
+  const handleFileSelect = (file: File | null) => {
+    setUploadedFile(file);
+    clearError();
+  };
+
+  const handleJobDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setJobDescription(e.target.value);
+    clearError();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!uploadedFile) {
+      return;
     }
-
-    const handleAnalyze = async ({ companyName, jobTitle, jobDescription, file }: { companyName: string, jobTitle: string, jobDescription: string, file: File  }) => {
-        setIsProcessing(true);
-
-        setStatusText('Uploading the file...');
-        const uploadedFile = await fs.upload([file]);
-        if(!uploadedFile) return setStatusText('Error: Failed to upload file');
-
-        setStatusText('Converting to image...');
-        const imageFile = await convertPdfToImage(file);
-        if(!imageFile.file) return setStatusText('Error: Failed to convert PDF to image');
-
-        setStatusText('Uploading the image...');
-        const uploadedImage = await fs.upload([imageFile.file]);
-        if(!uploadedImage) return setStatusText('Error: Failed to upload image');
-
-        setStatusText('Preparing data...');
-        const uuid = generateUUID();
-        const data = {
-            id: uuid,
-            resumePath: uploadedFile.path,
-            imagePath: uploadedImage.path,
-            companyName, jobTitle, jobDescription,
-            feedback: '',
-        }
-        await kv.set(`resume:${uuid}`, JSON.stringify(data));
-
-        setStatusText('Analyzing...');
-
-        const feedback = await ai.feedback(
-            uploadedFile.path,
-            prepareInstructions({ jobTitle, jobDescription })
-        )
-        if (!feedback) return setStatusText('Error: Failed to analyze resume');
-
-        const feedbackText = typeof feedback.message.content === 'string'
-            ? feedback.message.content
-            : feedback.message.content[0].text;
-
-        data.feedback = JSON.parse(feedbackText);
-        await kv.set(`resume:${uuid}`, JSON.stringify(data));
-        setStatusText('Analysis complete, redirecting...');
-        console.log(data);
-        navigate(`/resume/${uuid}`);
+    
+    if (!jobDescription.trim()) {
+      return;
     }
-
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const form = e.currentTarget.closest('form');
-        if(!form) return;
-        const formData = new FormData(form);
-
-        const companyName = formData.get('company-name') as string;
-        const jobTitle = formData.get('job-title') as string;
-        const jobDescription = formData.get('job-description') as string;
-
-        if(!file) return;
-
-        handleAnalyze({ companyName, jobTitle, jobDescription, file });
+    
+    try {
+      await analyzeResume(uploadedFile, jobDescription);
+      navigate('/results');
+    } catch (error) {
+      // Error is handled by the store
+      console.error('Analysis failed:', error);
     }
+  };
 
-    return (
-        <main className="bg-[url('/images/bg-main.svg')] bg-cover">
-            <Navbar />
+  return (
+    <>
+      <main className="bg-[url('/images/bg-main.svg')] bg-cover min-h-screen">
+        <Navbar />
 
-            <section className="main-section">
-                <div className="page-heading py-16">
-                    <h1>Smart feedback for your dream job</h1>
-                    {isProcessing ? (
-                        <>
-                            <h2>{statusText}</h2>
-                            <img src="/images/resume-scan.gif" className="w-full" />
-                        </>
-                    ) : (
-                        <h2>Drop your resume for an ATS score and improvement tips</h2>
-                    )}
-                    {!isProcessing && (
-                        <form id="upload-form" onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
-                            <div className="form-div">
-                                <label htmlFor="company-name">Company Name</label>
-                                <input type="text" name="company-name" placeholder="Company Name" id="company-name" />
-                            </div>
-                            <div className="form-div">
-                                <label htmlFor="job-title">Job Title</label>
-                                <input type="text" name="job-title" placeholder="Job Title" id="job-title" />
-                            </div>
-                            <div className="form-div">
-                                <label htmlFor="job-description">Job Description</label>
-                                <textarea rows={5} name="job-description" placeholder="Job Description" id="job-description" />
-                            </div>
+        <section className="main-section">
+          <div className="page-heading py-16">
+            <h1>AI Resume Analyzer</h1>
+            <h2>Upload your resume and job description for instant analysis</h2>
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mt-4 max-w-2xl mx-auto">
+                <p className="font-medium">Analysis Error</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-8 max-w-2xl mx-auto">
+              {/* File Upload */}
+              <div className="form-div">
+                <label htmlFor="resume-upload" className="text-lg font-semibold">
+                  Upload Resume (PDF or DOCX)
+                </label>
+                <FileUploader 
+                  onFileSelect={handleFileSelect}
+                  acceptedTypes={{
+                    'application/pdf': ['.pdf'],
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+                  }}
+                />
+              </div>
 
-                            <div className="form-div">
-                                <label htmlFor="uploader">Upload Resume</label>
-                                <FileUploader onFileSelect={handleFileSelect} />
-                            </div>
+              {/* Job Description */}
+              <div className="form-div">
+                <label htmlFor="job-description" className="text-lg font-semibold">
+                  Job Description
+                </label>
+                <textarea
+                  id="job-description"
+                  value={jobDescription}
+                  onChange={handleJobDescriptionChange}
+                  placeholder="Paste the job description here..."
+                  rows={8}
+                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+                  required
+                />
+                <p className="text-sm text-gray-600 mt-2">
+                  Include the full job description with requirements, skills, and responsibilities
+                </p>
+              </div>
 
-                            <button className="primary-button" type="submit">
-                                Analyze Resume
-                            </button>
-                        </form>
-                    )}
-                </div>
-            </section>
-        </main>
-    )
-}
-export default Upload
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={!uploadedFile || !jobDescription.trim() || isAnalyzing}
+                className="primary-button text-xl font-semibold py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAnalyzing ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    Analyzing Resume...
+                  </div>
+                ) : (
+                  'Analyze Resume'
+                )}
+              </button>
+            </form>
+
+            {/* Features Preview */}
+            <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <div className="text-center p-6 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-3xl font-bold text-blue-600 mb-2">ATS Score</div>
+                <p className="text-gray-700">Get your Applicant Tracking System compatibility score</p>
+              </div>
+              <div className="text-center p-6 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-3xl font-bold text-green-600 mb-2">Skills Match</div>
+                <p className="text-gray-700">See how your skills align with job requirements</p>
+              </div>
+              <div className="text-center p-6 bg-white/10 rounded-lg backdrop-blur-sm">
+                <div className="text-3xl font-bold text-purple-600 mb-2">Probability</div>
+                <p className="text-gray-700">Calculate your shortlisting probability percentage</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
+  );
+};
+
+export default Upload;

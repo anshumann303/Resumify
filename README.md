@@ -7,7 +7,7 @@
     <img alt="React" src="https://img.shields.io/badge/React-4c84f3?style=for-the-badge&logo=react&logoColor=white">
     <img alt="Tailwind" src="https://img.shields.io/badge/-Tailwind-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white">
     <img alt="TypeScript" src="https://img.shields.io/badge/-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
-    <img alt="Puter.js" src="https://img.shields.io/badge/Puter.js-181758?style=for-the-badge&logoColor=white">
+    <img alt="Vercel" src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white">
   </div>
 
   <h3 align="center">Resumify – AI-Powered Resume Analyzer</h3>
@@ -40,7 +40,8 @@ Whether you’re a student, fresher, or professional — Resumify gives you clea
 ## ⚙️ Tech Stack
 - **[React](https://react.dev/)** – UI library for building reusable components.  
 - **[React Router v7](https://reactrouter.com/)** – Routing and navigation for seamless page transitions.  
-- **[Puter.js](https://puter.com/)** – Handles auth, storage, and AI tools directly in the browser.  
+- **[OpenAI API](https://openai.com/)** – AI-powered resume analysis using GPT-4 Vision.  
+- **[Vercel](https://vercel.com/)** – Deployment platform with integrated KV database and Blob storage.  
 - **[Tailwind CSS](https://tailwindcss.com/)** – Utility-first CSS for fast, responsive UI design.  
 - **[TypeScript](https://www.typescriptlang.org/)** – Strong typing for maintainable, scalable code.  
 - **[Vite](https://vitejs.dev/)** – Lightning-fast bundler and dev server.  
@@ -69,13 +70,52 @@ Whether you’re a student, fresher, or professional — Resumify gives you clea
 ```bash
 git clone https://github.com/your-username/resumify.git
 cd resumify
-Install Dependencies
+```
 
+**Install Dependencies**
+```bash
 npm install
-Run the Project
+```
 
+**Environment Setup**
+```bash
+cp .env.example .env
+```
+Add your OpenAI API key to the `.env` file.
+
+**Run the Project**
+```bash
 npm run dev
+```
 Open http://localhost:5173 in your browser.
+
+## 🚀 Deploy to Vercel
+
+**1. Install Vercel CLI**
+```bash
+npm i -g vercel
+```
+
+**2. Login to Vercel**
+```bash
+vercel login
+```
+
+**3. Deploy**
+```bash
+vercel
+```
+
+**4. Set up Environment Variables**
+In your Vercel dashboard:
+- Add `OPENAI_API_KEY` with your OpenAI API key
+- Enable Upstash Redis integration (database will be auto-configured)
+- Enable Vercel Blob integration (storage will be auto-configured)
+
+**5. Redeploy**
+```bash
+vercel --prod
+```
 
 🔗 Assets
 Project assets and resources are available inside the public/readme folder.
