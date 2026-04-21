@@ -24,16 +24,12 @@ body {
 }
 
 main {
-  @apply min-h-screen pt-10;
-}
-
-/* Ensure footer is always at bottom */
-body {
-  @apply flex flex-col min-h-screen;
+  @apply pt-10;
 }
 
 #root {
-  @apply flex flex-col min-h-screen;
+  /* PageLayout handles the min-h-screen flex column layout per-route */
+  display: contents;
 }
 h1 {
   @apply text-6xl  text-gradient leading-tight tracking-[-2px] font-semibold;
