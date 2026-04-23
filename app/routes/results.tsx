@@ -6,201 +6,588 @@ import { useResumeAnalysisStore } from "~/lib/store";
 
 export function meta() {
   return [
-    { title: "Analysis Results - Resumify" },
-    { name: "description", content: "View your resume analysis results and improvement suggestions" },
+    { title: "Analysis Results — Resumify" },
+    {
+      name: "description",
+      content:
+        "View your resume analysis results: ATS score, skills match, shortlisting probability and improvement suggestions.",
+    },
   ];
 }
 
+/* ─── Helpers ─── */
+type ScoreLevel = "high" | "mid" | "low";
+function level(score: number): ScoreLevel {
+  if (score >= 80) return "high";
+  if (score >= 60) return "mid";
+  return "low";
+}
+const levelColors: Record<ScoreLevel, { text: string; glow: string; bar: string }> = {
+  high: { text: "#4ade80", glow: "rgba(74,222,128,0.25)", bar: "#4ade80" },
+  mid:  { text: "#facc15", glow: "rgba(250,204,21,0.22)",  bar: "#facc15" },
+  low:  { text: "#c8553d", glow: "rgba(200,85,61,0.28)",   bar: "#c8553d" },
+};
+
+/* ─── Score Card ─── */
+function ScoreCard({
+  label,
+  score,
+  suffix = "",
+}: {
+  label: string;
+  score: number;
+  suffix?: string;
+}) {
+  const lv = level(score);
+  const c = levelColors[lv];
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.03)",
+        border: "0.5px solid rgba(255,255,255,0.08)",
+        borderRadius: 14,
+        padding: "2rem 1.75rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.25rem",
+        flex: 1,
+        minWidth: 180,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontWeight: 500,
+          fontSize: "0.72rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.38)",
+        }}
+      >
+        {label}
+      </span>
+      <div
+        style={{
+          fontFamily: "'Playfair Display', serif",
+          fontWeight: 900,
+          fontSize: "3.5rem",
+          color: c.text,
+          lineHeight: 1,
+          textShadow: `0 0 32px ${c.glow}`,
+        }}
+      >
+        {score}
+        <span style={{ fontSize: "1.8rem", opacity: 0.7 }}>{suffix}</span>
+      </div>
+      {/* Progress bar */}
+      <div
+        style={{
+          height: 4,
+          background: "rgba(255,255,255,0.06)",
+          borderRadius: 999,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${Math.min(score, 100)}%`,
+            background: c.bar,
+            borderRadius: 999,
+            boxShadow: `0 0 10px ${c.glow}`,
+            transition: "width 1.2s cubic-bezier(0.22,1,0.36,1)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Skill chip ─── */
+function SkillChip({
+  skill,
+  type,
+}: {
+  skill: string;
+  type: "matched" | "missing";
+}) {
+  const matched = type === "matched";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.35rem",
+        padding: "0.3rem 0.75rem",
+        borderRadius: 999,
+        fontFamily: "'DM Sans', sans-serif",
+        fontWeight: 400,
+        fontSize: "0.8rem",
+        background: matched
+          ? "rgba(74,222,128,0.08)"
+          : "rgba(200,85,61,0.08)",
+        border: `0.5px solid ${matched ? "rgba(74,222,128,0.25)" : "rgba(200,85,61,0.25)"}`,
+        color: matched ? "#4ade80" : "#c8553d",
+      }}
+    >
+      {matched ? "✓" : "×"} {skill}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
 const Results = () => {
   const navigate = useNavigate();
-  const { analysisResult, uploadedFile, jobDescription, error } = useResumeAnalysisStore();
+  const { analysisResult, uploadedFile } = useResumeAnalysisStore();
 
   useEffect(() => {
-    // Redirect to upload if no analysis result
-    if (!analysisResult) {
-      navigate('/upload');
-    }
+    if (!analysisResult) navigate("/upload");
   }, [analysisResult, navigate]);
 
-  if (!analysisResult) {
-    return null; // Will redirect
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getScoreBgColor = (score: number) => {
-    if (score >= 80) return 'bg-green-100';
-    if (score >= 60) return 'bg-yellow-100';
-    return 'bg-red-100';
-  };
+  if (!analysisResult) return null;
 
   return (
     <>
-      <main className="bg-gray-50 min-h-screen">
+      <div
+        style={{
+          background: "#0e0e12",
+          minHeight: "100vh",
+          fontFamily: "'DM Sans', sans-serif",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <Navbar />
 
-        <section className="max-w-6xl mx-auto px-6 py-12">
+        <main
+          style={{
+            flex: 1,
+            maxWidth: 1040,
+            width: "100%",
+            margin: "0 auto",
+            padding: "8rem 2rem 5rem",
+          }}
+        >
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Resume Analysis Results</h1>
-            <p className="text-xl text-gray-600">
-              Analysis for: <span className="font-semibold">{uploadedFile?.name}</span>
-            </p>
+          <div
+            style={{
+              marginBottom: "3rem",
+              animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both",
+            }}
+          >
+            <Link
+              to="/upload"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 400,
+                fontSize: "0.82rem",
+                color: "rgba(255,255,255,0.38)",
+                textDecoration: "none",
+                marginBottom: "1.75rem",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.75)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.38)")
+              }
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Back to upload
+            </Link>
+
+            <h1
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 900,
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                color: "#fff",
+                letterSpacing: "-0.02em",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Resume Analysis Results
+            </h1>
+            {uploadedFile && (
+              <p
+                style={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 300,
+                  fontSize: "0.9rem",
+                  color: "rgba(255,255,255,0.38)",
+                }}
+              >
+                Analysed:{" "}
+                <span style={{ color: "rgba(255,255,255,0.65)" }}>
+                  {uploadedFile.name}
+                </span>
+              </p>
+            )}
           </div>
 
-          {/* Score Cards */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {/* ATS Score */}
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor(analysisResult.atsScore)}`}>
-                {analysisResult.atsScore}
-              </div>
-              <div className="text-gray-600 text-lg font-medium mb-2">ATS Score</div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className={`h-3 rounded-full transition-all duration-1000 ${
-                    analysisResult.atsScore >= 80 ? 'bg-green-500' :
-                    analysisResult.atsScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${analysisResult.atsScore}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Skills Match */}
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor(analysisResult.skillsMatchScore)}`}>
-                {analysisResult.skillsMatchScore}%
-              </div>
-              <div className="text-gray-600 text-lg font-medium mb-2">Skills Match</div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className={`h-3 rounded-full transition-all duration-1000 ${
-                    analysisResult.skillsMatchScore >= 80 ? 'bg-green-500' :
-                    analysisResult.skillsMatchScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${analysisResult.skillsMatchScore}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Shortlisting Probability */}
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor(analysisResult.shortlistingProbability)}`}>
-                {analysisResult.shortlistingProbability}%
-              </div>
-              <div className="text-gray-600 text-lg font-medium mb-2">Shortlisting Probability</div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className={`h-3 rounded-full transition-all duration-1000 ${
-                    analysisResult.shortlistingProbability >= 80 ? 'bg-green-500' :
-                    analysisResult.shortlistingProbability >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${analysisResult.shortlistingProbability}%` }}
-                ></div>
-              </div>
-            </div>
+          {/* Score cards row */}
+          <div
+            style={{
+              display: "flex",
+              gap: "1.25rem",
+              flexWrap: "wrap",
+              marginBottom: "2.5rem",
+              animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both",
+            }}
+          >
+            <ScoreCard label="ATS Score" score={analysisResult.atsScore} />
+            <ScoreCard
+              label="Skills Match"
+              score={analysisResult.skillsMatchScore}
+              suffix="%"
+            />
+            <ScoreCard
+              label="Shortlisting Probability"
+              score={analysisResult.shortlistingProbability}
+              suffix="%"
+            />
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Skills Analysis */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Skills Analysis</h2>
-              
-              {/* Matched Skills */}
+          {/* Two-column grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1.25rem",
+              marginBottom: "1.25rem",
+              animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both",
+            }}
+            className="max-md:grid-cols-1"
+          >
+            {/* Skills analysis */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "0.5px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                padding: "1.75rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.5rem",
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: "1.2rem",
+                  color: "#fff",
+                  margin: 0,
+                }}
+              >
+                Skills Analysis
+              </h2>
+
               {analysisResult.matchedSkills.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-green-700 mb-3">✅ Matched Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResult.matchedSkills.map((skill, index) => (
-                      <span 
-                        key={index}
-                        className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
-                      >
-                        {skill}
-                      </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 500,
+                      fontSize: "0.72rem",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "rgba(74,222,128,0.7)",
+                    }}
+                  >
+                    Matched
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {analysisResult.matchedSkills.map((skill, i) => (
+                      <SkillChip key={i} skill={skill} type="matched" />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Missing Skills */}
               {analysisResult.missingSkills.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-red-700 mb-3">❌ Missing Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResult.missingSkills.map((skill, index) => (
-                      <span 
-                        key={index}
-                        className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium"
-                      >
-                        {skill}
-                      </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 500,
+                      fontSize: "0.72rem",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "rgba(200,85,61,0.7)",
+                    }}
+                  >
+                    Missing
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {analysisResult.missingSkills.map((skill, i) => (
+                      <SkillChip key={i} skill={skill} type="missing" />
                     ))}
                   </div>
                 </div>
               )}
 
-              {analysisResult.matchedSkills.length === 0 && analysisResult.missingSkills.length === 0 && (
-                <p className="text-gray-600">No specific skills identified in the job description.</p>
-              )}
+              {analysisResult.matchedSkills.length === 0 &&
+                analysisResult.missingSkills.length === 0 && (
+                  <p
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 300,
+                      fontSize: "0.875rem",
+                      color: "rgba(255,255,255,0.38)",
+                    }}
+                  >
+                    No specific skills identified in the job description.
+                  </p>
+                )}
             </div>
 
-            {/* ATS Improvements */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">ATS Improvements</h2>
-              
+            {/* ATS improvements */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "0.5px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                padding: "1.75rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.25rem",
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: "1.2rem",
+                  color: "#fff",
+                  margin: 0,
+                }}
+              >
+                ATS Improvements
+              </h2>
+
               {analysisResult.atsImprovements.length > 0 ? (
-                <ul className="space-y-3">
-                  {analysisResult.atsImprovements.map((improvement, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-blue-600 text-sm font-bold">{index + 1}</span>
+                <ol
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    listStyle: "none",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem",
+                  }}
+                >
+                  {analysisResult.atsImprovements.map((item, i) => (
+                    <li
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "0.85rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "rgba(200,85,61,0.15)",
+                          border: "0.5px solid rgba(200,85,61,0.35)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          fontFamily: "'Playfair Display', serif",
+                          fontWeight: 700,
+                          fontSize: "0.7rem",
+                          color: "#c8553d",
+                          marginTop: 1,
+                        }}
+                      >
+                        {i + 1}
                       </div>
-                      <p className="text-gray-700">{improvement}</p>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontWeight: 300,
+                          fontSize: "0.875rem",
+                          color: "rgba(255,255,255,0.6)",
+                          lineHeight: 1.65,
+                          margin: 0,
+                        }}
+                      >
+                        {item}
+                      </p>
                     </li>
                   ))}
-                </ul>
+                </ol>
               ) : (
-                <div className="text-center py-8">
-                  <div className="text-green-600 text-4xl mb-2">🎉</div>
-                  <p className="text-green-700 font-medium">Great job! Your resume is well-optimized for ATS systems.</p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.75rem",
+                    padding: "2rem 0",
+                    textAlign: "center",
+                  }}
+                >
+                  <span style={{ fontSize: "2.5rem" }}>🎉</span>
+                  <p
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontWeight: 400,
+                      fontSize: "0.875rem",
+                      color: "#4ade80",
+                    }}
+                  >
+                    Your resume is already well-optimised for ATS systems.
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Overall Feedback */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Overall Feedback</h2>
-            <div className="prose max-w-none">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {analysisResult.overallFeedback}
-              </p>
-            </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "0.5px solid rgba(255,255,255,0.08)",
+              borderRadius: 14,
+              padding: "1.75rem",
+              marginBottom: "3rem",
+              animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.4s both",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: "1.2rem",
+                color: "#fff",
+                marginBottom: "1rem",
+              }}
+            >
+              Overall Feedback
+            </h2>
+            <p
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 300,
+                fontSize: "0.9rem",
+                color: "rgba(255,255,255,0.55)",
+                lineHeight: 1.8,
+                whiteSpace: "pre-line",
+                margin: 0,
+              }}
+            >
+              {analysisResult.overallFeedback}
+            </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
-            <Link 
-              to="/upload" 
-              className="primary-button text-center px-8 py-3 text-lg font-semibold"
+          {/* Action buttons */}
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) 0.5s both",
+            }}
+          >
+            <Link
+              to="/upload"
+              id="analyze-another-btn"
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 500,
+                fontSize: "0.85rem",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "#fff",
+                background: "#c8553d",
+                border: "none",
+                borderRadius: 8,
+                padding: "0.8rem 2rem",
+                cursor: "pointer",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                transition: "background 0.2s, transform 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement;
+                el.style.background = "#b04432";
+                el.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement;
+                el.style.background = "#c8553d";
+                el.style.transform = "translateY(0)";
+              }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
               Analyze Another Resume
             </Link>
-            <button 
+
+            <button
+              id="print-results-btn"
               onClick={() => window.print()}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-full text-lg font-semibold transition-colors duration-300"
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 400,
+                fontSize: "0.85rem",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.6)",
+                background: "transparent",
+                border: "0.5px solid rgba(255,255,255,0.12)",
+                borderRadius: 8,
+                padding: "0.8rem 2rem",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                transition: "border-color 0.2s, color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.borderColor = "rgba(255,255,255,0.3)";
+                el.style.color = "rgba(255,255,255,0.9)";
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.borderColor = "rgba(255,255,255,0.12)";
+                el.style.color = "rgba(255,255,255,0.6)";
+              }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
               Print Results
             </button>
           </div>
-        </section>
-      </main>
+        </main>
+      </div>
       <Footer />
     </>
   );
