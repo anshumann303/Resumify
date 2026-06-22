@@ -7,7 +7,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { ClerkProvider } from "@clerk/react-router";
-import { rootAuthLoader } from "@clerk/react-router/ssr.server";
+import { rootAuthLoader } from "@clerk/react-router/server";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -25,7 +25,7 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-// Required by @clerk/react-router for SSR
+// rootAuthLoader injects Clerk's auth state into loaderData for SSR
 export async function loader(args: Route.LoaderArgs) {
   return rootAuthLoader(args);
 }
