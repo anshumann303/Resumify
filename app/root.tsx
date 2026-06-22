@@ -7,6 +7,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { ClerkProvider } from "@clerk/react-router";
+import { rootAuthLoader } from "@clerk/react-router/ssr.server";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -23,6 +24,11 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300;1,9..40,400&display=swap",
   },
 ];
+
+// Required by @clerk/react-router for SSR
+export async function loader(args: Route.LoaderArgs) {
+  return rootAuthLoader(args);
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,9 +48,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function App({ loaderData }: Route.ComponentProps) {
   return (
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      loaderData={loaderData}
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+    >
       <Outlet />
     </ClerkProvider>
   );
