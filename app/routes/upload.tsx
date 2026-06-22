@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useAuth, RedirectToSignIn } from "@clerk/react-router";
 import Navbar from "~/components/Navbar";
 import Footer from "~/components/Footer";
 import FileUploader from "~/components/FileUploader";
@@ -17,11 +18,26 @@ export function meta() {
 }
 
 const Upload = () => {
+  const { isSignedIn, isLoaded } = useAuth();
   const navigate = useNavigate();
   const { analyzeResume, isAnalyzing, error, clearError, setJobDescription, jobDescription } =
     useResumeAnalysisStore();
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // Show Clerk's redirect while auth loads
+  if (!isLoaded) {
+    return (
+      <div style={{ background: "#0e0e12", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, border: "2px solid rgba(255,255,255,0.1)", borderTopColor: "#c8553d", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+      </div>
+    );
+  }
+
+  // Redirect unauthenticated users to Clerk sign-in
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
 
   const handleFileSelect = (file: File | null) => {
     setUploadedFile(file);

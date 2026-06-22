@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, Link } from "react-router";
+import { useAuth, RedirectToSignIn } from "@clerk/react-router";
 import Navbar from "~/components/Navbar";
 import Footer from "~/components/Footer";
 import { useResumeAnalysisStore } from "~/lib/store";
@@ -137,12 +138,23 @@ function SkillChip({
 
 /* ═══════════════════════════════════════════════════════════ */
 const Results = () => {
+  const { isSignedIn, isLoaded } = useAuth();
   const navigate = useNavigate();
   const { analysisResult, uploadedFile } = useResumeAnalysisStore();
 
   useEffect(() => {
     if (!analysisResult) navigate("/upload");
   }, [analysisResult, navigate]);
+
+  if (!isLoaded) {
+    return (
+      <div style={{ background: "#0e0e12", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, border: "2px solid rgba(255,255,255,0.1)", borderTopColor: "#c8553d", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (!isSignedIn) return <RedirectToSignIn />;
 
   if (!analysisResult) return null;
 

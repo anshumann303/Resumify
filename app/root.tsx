@@ -6,10 +6,10 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { ClerkProvider } from "@clerk/react-router";
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { AuthProvider } from "~/context/AuthContext";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -44,9 +44,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <AuthProvider>
+    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
       <Outlet />
-    </AuthProvider>
+    </ClerkProvider>
   );
 }
 
