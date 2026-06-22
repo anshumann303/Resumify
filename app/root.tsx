@@ -27,7 +27,14 @@ export const links: Route.LinksFunction = () => [
 
 // rootAuthLoader injects Clerk's auth state into loaderData for SSR
 export async function loader(args: Route.LoaderArgs) {
-  return rootAuthLoader(args);
+  try {
+    return await rootAuthLoader(args);
+  } catch (error) {
+    // If Clerk auth fails (e.g. missing/invalid keys), return empty state
+    // so the app still renders rather than showing a server error
+    console.error("Clerk rootAuthLoader error:", error);
+    return {};
+  }
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -51,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <ClerkProvider
-      loaderData={loaderData}
+      loaderData={loaderData as Parameters<typeof ClerkProvider>[0]["loaderData"]}
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
     >
       <Outlet />
