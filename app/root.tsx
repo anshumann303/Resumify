@@ -25,16 +25,12 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-// rootAuthLoader injects Clerk's auth state into loaderData for SSR
+// Pass secret key explicitly so Vercel serverless picks it up correctly
 export async function loader(args: Route.LoaderArgs) {
-  try {
-    return await rootAuthLoader(args);
-  } catch (error) {
-    // If Clerk auth fails (e.g. missing/invalid keys), return empty state
-    // so the app still renders rather than showing a server error
-    console.error("Clerk rootAuthLoader error:", error);
-    return {};
-  }
+  return rootAuthLoader(args, {
+    secretKey: process.env.CLERK_SECRET_KEY,
+    publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY,
+  });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -58,7 +54,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <ClerkProvider
-      loaderData={loaderData as Parameters<typeof ClerkProvider>[0]["loaderData"]}
+      loaderData={loaderData}
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
     >
       <Outlet />
